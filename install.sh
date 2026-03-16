@@ -17,8 +17,10 @@ usage() {
   - 若未检测到仓库内 obsutil，会自动调用 lib/obsutil.sh 安装
   - system 模式会安装到 /etc/systemd/system
   - user 模式会安装到 ~/.config/systemd/user
+  - 会为目标用户安装每天 03:00 执行一次的备份 cron
+  - 安装完成后会执行一次 ./backup.sh --self-check 自检
   - 不会覆盖已有 env.conf 和 exclude.user.list
-  - dry-run 只打印将执行的动作，不实际写入 systemd
+  - dry-run 只打印将执行的动作，不实际写入 systemd 或 crontab
 USAGE
 }
 
@@ -42,6 +44,7 @@ need_cmd() {
 need_cmd systemctl
 need_cmd install
 need_cmd sed
+need_cmd crontab
 
 if [[ "$INSTALL_MODE" != "system" && "$INSTALL_MODE" != "user" ]]; then
   echo "无效 --mode：$INSTALL_MODE" >&2
@@ -132,6 +135,36 @@ render_unit() {
 render_unit "${SCRIPT_DIR}/systemd/backup-obs-update.service" "${SYSTEMD_DIR}/backup-obs-update.service"
 render_unit "${SCRIPT_DIR}/systemd/backup-obs-update.timer" "${SYSTEMD_DIR}/backup-obs-update.timer"
 
+install_backup_cron() {
+  local cron_line current_cron filtered_cron target_user current_user
+  cron_line="0 3 * * * ${SCRIPT_DIR}/backup.sh"
+  current_user="$(id -un)"
+  target_user="$INSTALL_USER"
+
+  if $DRY_RUN; then
+    echo "[dry-run] 将为用户 ${target_user} 写入 cron：${cron_line}"
+    return 0
+  fi
+
+  if [[ "$(id -u)" -eq 0 ]]; then
+    current_cron="$(crontab -u "$target_user" -l 2>/dev/null || true)"
+    filtered_cron="$(printf '%s\n' "$current_cron" | grep -v -F "${SCRIPT_DIR}/backup.sh" || true)"
+    printf '%s\n%s\n' "$filtered_cron" "$cron_line" | sed '/^$/N;/^\n$/D' | crontab -u "$target_user" -
+    echo "已为用户 ${target_user} 安装 cron：${cron_line}"
+    return 0
+  fi
+
+  if [[ "$target_user" != "$current_user" ]]; then
+    echo "非 root 模式下只能为当前用户 ${current_user} 安装 cron" >&2
+    exit 2
+  fi
+
+  current_cron="$(crontab -l 2>/dev/null || true)"
+  filtered_cron="$(printf '%s\n' "$current_cron" | grep -v -F "${SCRIPT_DIR}/backup.sh" || true)"
+  printf '%s\n%s\n' "$filtered_cron" "$cron_line" | sed '/^$/N;/^\n$/D' | crontab -
+  echo "已为当前用户安装 cron：${cron_line}"
+}
+
 if $DRY_RUN; then
   echo "[dry-run] 将执行 systemctl daemon-reload"
   echo "[dry-run] 将启用 backup-obs-update.timer"
@@ -147,4 +180,12 @@ else
   echo "已启用 user timer：backup-obs-update.timer"
   echo "查看状态：systemctl --user status backup-obs-update.timer"
   echo "查看日志：journalctl --user -u backup-obs-update.service -n 100"
+fi
+
+install_backup_cron
+
+if $DRY_RUN; then
+  echo "[dry-run] 将执行 ./backup.sh --self-check"
+else
+  bash "${SCRIPT_DIR}/backup.sh" --self-check
 fi

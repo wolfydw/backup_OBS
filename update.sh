@@ -13,7 +13,6 @@ usage() {
 说明：
   - 不带参数时，默认更新 stable 分支
   - 带参数时，可以切换到指定分支或 tag
-  - 更新后会自动执行一次 ./backup.sh --self-check 自检
 USAGE
 }
 
@@ -49,8 +48,8 @@ fi
 chmod 755 \
   "${SCRIPT_DIR}/backup.sh" \
   "${SCRIPT_DIR}/clean_backups.sh" \
+  "${SCRIPT_DIR}/obsutil" \
+  "${SCRIPT_DIR}/lib/obsutil.sh" \
   "${SCRIPT_DIR}/lib/telegram.sh" \
   "${SCRIPT_DIR}/install.sh" \
   "${SCRIPT_DIR}/update.sh"
-
-bash "${SCRIPT_DIR}/backup.sh" --self-check

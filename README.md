@@ -86,6 +86,8 @@ cd /root/backup_OBS
 - 修正脚本执行权限
 - 安装 `systemd` 更新任务
 - 启用 `backup-obs-update.timer`
+- 为目标用户写入每天 `03:00` 执行一次的备份 `cron`
+- 执行一次 `./backup.sh --self-check` 安装自检
 
 默认使用 system 模式，也就是安装到 `/etc/systemd/system`。
 
@@ -115,6 +117,7 @@ cd /root/backup_OBS
 ```bash
 systemctl status backup-obs-update.timer
 journalctl -u backup-obs-update.service -n 100
+crontab -l
 ```
 
 ## 自动更新
@@ -130,7 +133,6 @@ journalctl -u backup-obs-update.service -n 100
 - `git fetch --tags origin`
 - 默认更新 `stable` 分支，或切换到你指定的 tag / 分支
 - 修正脚本执行权限
-- 自动执行一次 `./backup.sh --self-check` 自检
 
 也可以手动指定版本：
 
@@ -142,6 +144,11 @@ journalctl -u backup-obs-update.service -n 100
 ```
 
 配合 `systemd timer` 后，机器会定时自动执行 `update.sh`。
+
+当前默认策略是：
+
+- `systemd timer`：负责定时执行 `./update.sh stable`
+- `cron`：负责每天 `03:00` 执行一次 `./backup.sh`
 
 ## GitHub 多机发布流程
 
