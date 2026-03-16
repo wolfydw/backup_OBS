@@ -4,6 +4,7 @@
 
 - `backup.sh`：打包目录、生成 `sha256`、上传到 OBS、下载远端校验文件做一致性校验
 - `clean_backups.sh`：按文件名日期清理旧备份
+- `lib/obsutil.sh`：下载或更新仓库根目录下的 `./obsutil`
 - `lib/telegram.sh`：统一处理 Telegram 通知模板和发送逻辑
 
 ## 配置
@@ -49,6 +50,12 @@ EOF
 ./backup.sh --dry-run
 ```
 
+仅做自检，且不保留本地归档：
+
+```bash
+./backup.sh --self-check
+```
+
 检查远端前缀是否可访问：
 
 ```bash
@@ -73,6 +80,7 @@ cd /root/backup_OBS
 
 `install.sh` 会自动完成：
 
+- 如果未检测到仓库根目录下的 `./obsutil`，则自动调用 `./lib/obsutil.sh`
 - 如果不存在，则创建 `env.conf`
 - 如果不存在，则创建 `exclude.user.list`
 - 修正脚本执行权限
@@ -93,6 +101,14 @@ cd /root/backup_OBS
 - `system` 模式需要 root 权限
 - `user` 模式会安装到 `~/.config/systemd/user`
 - 安装脚本不会覆盖已有的 `env.conf` 和 `exclude.user.list`
+- `install.sh` 和后续脚本都只使用仓库根目录下的 `./obsutil`
+- `obsutil` 安装完成后，首次仍需手动执行 `./obsutil config -interactive`
+
+如果你想手动安装或更新仓库根目录下的 `./obsutil`，可以直接执行：
+
+```bash
+./lib/obsutil.sh
+```
 
 常用查看命令：
 
@@ -114,7 +130,7 @@ journalctl -u backup-obs-update.service -n 100
 - `git fetch --tags origin`
 - 默认更新 `stable` 分支，或切换到你指定的 tag / 分支
 - 修正脚本执行权限
-- 自动执行一次 `./backup.sh --dry-run` 自检
+- 自动执行一次 `./backup.sh --self-check` 自检
 
 也可以手动指定版本：
 

@@ -13,7 +13,7 @@ usage() {
 说明：
   - 不带参数时，默认更新 stable 分支
   - 带参数时，可以切换到指定分支或 tag
-  - 更新后会自动执行一次 ./backup.sh --dry-run 自检
+  - 更新后会自动执行一次 ./backup.sh --self-check 自检
 USAGE
 }
 
@@ -53,4 +53,4 @@ chmod 755 \
   "${SCRIPT_DIR}/install.sh" \
   "${SCRIPT_DIR}/update.sh"
 
-bash "${SCRIPT_DIR}/backup.sh" --dry-run
+bash "${SCRIPT_DIR}/backup.sh" --self-check

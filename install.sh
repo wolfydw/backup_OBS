@@ -14,6 +14,7 @@ usage() {
   ./install.sh [--user=NAME] [--mode=system|user] [--dry-run]
 
 说明：
+  - 若未检测到仓库内 obsutil，会自动调用 lib/obsutil.sh 安装
   - system 模式会安装到 /etc/systemd/system
   - user 模式会安装到 ~/.config/systemd/user
   - 不会覆盖已有 env.conf 和 exclude.user.list
@@ -61,6 +62,18 @@ if [[ "$INSTALL_MODE" == "user" ]]; then
   SYSTEMD_DIR="${HOME_DIR}/.config/systemd/user"
 fi
 
+if [[ -f "${SCRIPT_DIR}/obsutil" ]]; then
+  chmod 755 "${SCRIPT_DIR}/obsutil"
+  echo "已检测到仓库内 obsutil：${SCRIPT_DIR}/obsutil"
+else
+  chmod 755 "${SCRIPT_DIR}/lib/obsutil.sh"
+  if $DRY_RUN; then
+    bash "${SCRIPT_DIR}/lib/obsutil.sh" --dry-run
+  else
+    bash "${SCRIPT_DIR}/lib/obsutil.sh"
+  fi
+fi
+
 mkdir -p "${SCRIPT_DIR}/systemd"
 
 if [[ ! -f "${SCRIPT_DIR}/env.conf" ]]; then
@@ -84,9 +97,14 @@ fi
 chmod 755 \
   "${SCRIPT_DIR}/backup.sh" \
   "${SCRIPT_DIR}/clean_backups.sh" \
+  "${SCRIPT_DIR}/lib/obsutil.sh" \
   "${SCRIPT_DIR}/lib/telegram.sh" \
   "${SCRIPT_DIR}/install.sh" \
   "${SCRIPT_DIR}/update.sh"
+
+if [[ -f "${SCRIPT_DIR}/obsutil" ]]; then
+  chmod 755 "${SCRIPT_DIR}/obsutil"
+fi
 
 if $DRY_RUN; then
   echo "[dry-run] 目标 systemd 目录：$SYSTEMD_DIR"

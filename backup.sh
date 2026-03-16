@@ -4,7 +4,7 @@
 # - 打包多目录（支持 pigz），生成 SHA256 校验，obsutil 分片/并发上传
 # - 上传 .tar.gz 以及 .tar.gz.sha256，并下载远端 .sha256 比对确保完整性
 # - 成功/失败写入日志并 Telegram 通知
-# - 支持 --dry-run / --verify / --keep-local / --concurrency / --rate / --label / --sse
+# - 支持 --dry-run / --self-check / --verify / --keep-local / --concurrency / --rate / --label / --sse
 # 退出码：0 成功；2 配置缺失；3 打包失败；4 上传失败；5 校验失败
 
 set -Eeuo pipefail
@@ -81,6 +81,7 @@ BACKUP_PATHS=()
 
 KEEP_LOCAL=false
 DRY_RUN=false
+SELF_CHECK=false
 VERIFY_ONLY=false
 CLI_LABEL=""
 CLI_SSE="none"
@@ -92,7 +93,7 @@ GPG_SYM=false
 usage() {
   cat <<'USAGE'
 用法：
-  ./backup.sh [--dry-run] [--verify] [--keep-local]
+  ./backup.sh [--dry-run] [--self-check] [--verify] [--keep-local]
               [--concurrency=N] [--rate=10MB/s]
               [--label=NAME]
               [--sse=none|kms|aes256]
@@ -103,6 +104,7 @@ USAGE
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift;;
+    --self-check) DRY_RUN=true; SELF_CHECK=true; shift;;
     --verify) VERIFY_ONLY=true; shift;;
     --keep-local) KEEP_LOCAL=true; shift;;
     --concurrency=*) CLI_CONCURRENCY="${1#*=}"; shift;;
@@ -524,6 +526,10 @@ if $DRY_RUN; then
   log "INFO" "Dry-run 模式：不执行上传。归档：${ARCHIVE_BASE} 大小：${BACKUP_SIZE_HUMAN}"
   log "INFO" "本次总用时：${SECONDS}s"
   tg_backup_dryrun "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "$(printf '%s\n' "${BACKUP_PATHS[@]}")" "$(tg_read_user_excludes "$USER_EXCLUDE_FILE")" "$ARCHIVE_BASE" "$BACKUP_SIZE_HUMAN" "${PACK_SECONDS}s"
+  if $SELF_CHECK; then
+    rm -f "$ARCHIVE_PATH" "$SHA_PATH" || true
+    log "INFO" "Self-check 模式：已删除本地自检归档与校验文件"
+  fi
   exit 0
 fi
 
