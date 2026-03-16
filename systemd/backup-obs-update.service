@@ -1,0 +1,10 @@
+[Unit]
+Description=Update backup_OBS scripts from Git
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__RUN_USER__
+WorkingDirectory=__WORKDIR__
+ExecStart=__WORKDIR__/update.sh stable

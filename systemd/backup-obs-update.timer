@@ -1,0 +1,11 @@
+[Unit]
+Description=Run backup_OBS updater periodically
+
+[Timer]
+OnBootSec=10m
+OnUnitActiveSec=1h
+Persistent=true
+Unit=backup-obs-update.service
+
+[Install]
+WantedBy=timers.target

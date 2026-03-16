@@ -61,6 +61,111 @@ EOF
 ./clean_backups.sh --retain-days=5
 ```
 
+## 首次部署
+
+新机器首次部署推荐流程：
+
+```bash
+git clone <你的仓库地址> /root/backup_OBS
+cd /root/backup_OBS
+./install.sh
+```
+
+`install.sh` 会自动完成：
+
+- 如果不存在，则创建 `env.conf`
+- 如果不存在，则创建 `exclude.user.list`
+- 修正脚本执行权限
+- 安装 `systemd` 更新任务
+- 启用 `backup-obs-update.timer`
+
+默认使用 system 模式，也就是安装到 `/etc/systemd/system`。
+
+可选参数：
+
+```bash
+./install.sh --mode=system
+./install.sh --mode=user --user=root
+```
+
+说明：
+
+- `system` 模式需要 root 权限
+- `user` 模式会安装到 `~/.config/systemd/user`
+- 安装脚本不会覆盖已有的 `env.conf` 和 `exclude.user.list`
+
+常用查看命令：
+
+```bash
+systemctl status backup-obs-update.timer
+journalctl -u backup-obs-update.service -n 100
+```
+
+## 自动更新
+
+仓库内提供了一个统一更新脚本：
+
+```bash
+./update.sh
+```
+
+它会执行：
+
+- `git fetch --tags origin`
+- 默认更新 `stable` 分支，或切换到你指定的 tag / 分支
+- 修正脚本执行权限
+- 自动执行一次 `./backup.sh --dry-run` 自检
+
+也可以手动指定版本：
+
+```bash
+./update.sh
+./update.sh stable
+./update.sh main
+./update.sh v1.2.0
+```
+
+配合 `systemd timer` 后，机器会定时自动执行 `update.sh`。
+
+## GitHub 多机发布流程
+
+推荐流程：
+
+1. 在一台测试机或开发环境修改脚本并提交到 GitHub。
+2. 在测试机手动运行：
+   - `./update.sh main`
+   - `./backup.sh --dry-run`
+   - `./backup.sh`
+   - `./clean_backups.sh --retain-days=100000`
+3. 确认备份、清理、Telegram 通知都正常。
+4. 打稳定版本标签，例如：
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+5. 生产机器可以手动执行：
+
+```bash
+./update.sh v1.2.0
+```
+
+或者让 `systemd` 定时器长期跟随 `stable` 分支。
+
+更稳的做法是：
+
+- `main` 用来持续迭代
+- `stable` 用来给其他机器自动更新
+- tag 用来留档和回滚
+
+推荐的发布方式：
+
+1. 日常修改提交到 `main`
+2. 测试机验证 `main`
+3. 验证通过后，把 `main` 合并到 `stable`
+4. 其他机器的 `systemd timer` 自动执行 `./update.sh stable`
+
 ## 排除规则
 
 脚本会同时读取两个排除文件：
