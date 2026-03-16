@@ -316,10 +316,10 @@ pack() {
 
   log "INFO" "开始打包（支持 exclude.list），pigz=${USE_PIGZ}"
   if $USE_PIGZ; then
-    tar --warning=no-file-changed --exclude-ignore="$EXCLUDE_FILE" --exclude-from="$EXCLUDE_FILE" \
+    tar --warning=no-file-changed --exclude-from="$EXCLUDE_FILE" \
       -c "${tar_args[@]}" | pigz > "$ARCHIVE_PATH"
   else
-    tar --warning=no-file-changed --exclude-ignore="$EXCLUDE_FILE" --exclude-from="$EXCLUDE_FILE" \
+    tar --warning=no-file-changed --exclude-from="$EXCLUDE_FILE" \
       -czf "$ARCHIVE_PATH" "${tar_args[@]}"
   fi
   local end; end=$(date +%s)
