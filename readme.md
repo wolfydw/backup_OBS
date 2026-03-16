@@ -4,6 +4,7 @@
 
 - `backup.sh`：打包目录、生成 `sha256`、上传到 OBS、下载远端校验文件做一致性校验
 - `clean_backups.sh`：按文件名日期清理旧备份
+- `lib/telegram.sh`：统一处理 Telegram 通知模板和发送逻辑
 
 ## 配置
 
@@ -11,14 +12,28 @@
 
 ```bash
 cp env.conf.example env.conf
+cp exclude.user.list.example exclude.user.list
 ```
 
 重点配置项：
 
 - `OBS_BUCKET`：OBS 桶名
 - `LABEL`：机器或业务标识
-- `BACKUP_DIR`：要备份的目录，当前格式为以空格分隔的路径列表
+- `BACKUP_DIRS`：要备份的目录，使用多行格式，每行一个目录
 - `TG_BOT_TOKEN` / `TG_USER_ID`：Telegram 通知配置，可留空
+
+`BACKUP_DIRS` 示例：
+
+```bash
+BACKUP_DIRS=$(cat <<'EOF'
+/root/data
+/root/.openclaw
+/root/myapp
+EOF
+)
+```
+
+不再建议使用空格分隔的目录列表，因为路径中一旦包含空格，Shell 会把它拆坏。
 
 ## 使用方式
 
@@ -46,18 +61,15 @@ cp env.conf.example env.conf
 ./clean_backups.sh --retain-days=5
 ```
 
-## exclude.list 规则
+## 排除规则
 
-`exclude.list` 由 `tar --exclude-from` 读取，匹配的是归档内的相对路径，不是磁盘上的绝对路径。
+脚本会同时读取两个排除文件：
 
-不要写：
+- `exclude.list`：默认排除规则，一般不用修改，可以提交 Git
+- `exclude.user.list`：用户自定义排除规则，不提交 Git
+- `exclude.user.list.example`：用户规则示例文件，可以提交 Git
 
-```text
-/root/data/project/src/main.js
-cache/
-```
-
-应该写相对路径或通配规则。
+排除规则由 `tar --exclude-from` 读取，匹配的是归档内的相对路径，不是磁盘上的绝对路径。
 
 排除单个文件：
 
@@ -71,25 +83,17 @@ project/src/main.js
 */project/src/main.js
 ```
 
-排除某类文件：
-
-```text
-*.log
-*.tmp
-```
-
 排除一个目录，建议写两行：
-
-```text
-*/node_modules
-*/node_modules/*
-```
-
-例如排除 `project/cache`：
 
 ```text
 */project/cache
 */project/cache/*
 ```
 
-当前自带的 `exclude.list` 已对常见目录采用这种写法，避免 `.cache/`、`node_modules/` 这类规则匹配不到的问题。
+默认规则放在 `exclude.list`，业务自定义规则建议只写到 `exclude.user.list`。
+
+更完整的默认规则、用户规则示例和配置模板，请直接查看：
+
+- `exclude.list`
+- `exclude.user.list.example`
+- `env.conf.example`

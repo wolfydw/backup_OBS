@@ -1,0 +1,31 @@
+# ============================================================
+# exclude.user.list
+# ============================================================
+# 说明：
+# 1. 这个文件只放“用户自定义排除规则”。
+# 2. backup.sh 会自动同时加载 exclude.list 和 exclude.user.list。
+# 3. 本文件建议复制为 exclude.user.list 后自行修改。
+# 4. exclude.user.list 已加入 .gitignore，不会提交到 Git。
+#
+# 使用方法：
+#   cp exclude.user.list.example exclude.user.list
+#
+# 规则示例：
+# - 排除单个文件
+#   */project/src/main.js
+#
+# - 排除一个目录
+#   */project/cache
+#   */project/cache/*
+#
+# - 排除某个固定路径
+#   /root/data/dify
+#
+# - 排除任意位置的隐藏目录
+#   */.halo
+#   */.halo/*
+# ============================================================
+
+/root/data/dify
+*/.halo
+*/.halo/*
