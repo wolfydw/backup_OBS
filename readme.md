@@ -69,26 +69,23 @@ EOF
 - `exclude.user.list`：用户自定义排除规则，不提交 Git
 - `exclude.user.list.example`：用户规则示例文件，可以提交 Git
 
-排除规则由 `tar --exclude-from` 读取，匹配的是归档内的相对路径，不是磁盘上的绝对路径。
+默认规则仍然走 `tar --exclude-from`。
+用户自定义规则现在会在实际备份目录里先做一次解析，再自动换算成归档路径，所以不需要你手动猜 tar 看到的相对路径。
+如果某条用户规则当前没有命中任何实际路径，脚本会记录 `WARN`，但不会因此中止备份。
 
-排除单个文件：
-
-```text
-project/src/main.js
-```
-
-或者：
+推荐写法 1：绝对路径
 
 ```text
-*/project/src/main.js
+/root/data/dify
 ```
 
-排除一个目录，建议写两行：
+推荐写法 2：通配模式
 
 ```text
-*/project/cache
-*/project/cache/*
+*/.halo
 ```
+
+对于 `*/xxxx` 这类规则，程序会在实际备份目录中先匹配命中的对象，再自动判断命中的是文件还是目录，因此用户不需要额外写一行 `/*` 来区分目录内容。
 
 默认规则放在 `exclude.list`，业务自定义规则建议只写到 `exclude.user.list`。
 

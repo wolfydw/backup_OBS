@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# 统一的 Telegram 通知模块：
+# - 负责消息模板拼装
+# - 负责把动态内容放进代码块，降低 MarkdownV2 出错概率
+# - 供 backup.sh 和 clean_backups.sh 共用
+
 tg_code_block() {
   local text="${1-}"
   text="$(printf '%s' "$text" | sed -e 's/\\/\\\\/g' -e 's/`/\\`/g')"

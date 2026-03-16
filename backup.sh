@@ -26,6 +26,13 @@ log() {
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/telegram.sh"
 
+RUNTIME_EXCLUDE_FILE=""
+
+cleanup_tmp() {
+  [[ -n "${RUNTIME_EXCLUDE_FILE:-}" ]] && rm -f "$RUNTIME_EXCLUDE_FILE"
+}
+trap cleanup_tmp EXIT
+
 on_error() {
   local exit_code=$?
   local line_no=${BASH_LINENO[0]:-}
@@ -209,6 +216,156 @@ build_tar_file_list() {
   printf '%s\n' "${args[@]}"
 }
 
+archive_path_for_abs() {
+  # 将真实文件系统绝对路径映射为 tar 归档内路径。
+  local abs_input="$1"
+  local root abs_root root_base rel
+
+  for root in "${BACKUP_PATHS[@]}"; do
+    abs_root="$(readlink -f "$root")"
+    root_base="$(basename "$abs_root")"
+
+    if [[ "$abs_input" == "$abs_root" ]]; then
+      printf '%s\n' "$root_base"
+      return 0
+    fi
+
+    if [[ "$abs_input" == "$abs_root"/* ]]; then
+      rel="${abs_input#"$abs_root"/}"
+      printf '%s/%s\n' "$root_base" "$rel"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+append_exclude_path() {
+  local archive_path="$1"
+  local path_type="$2"
+
+  printf '%s\n' "$archive_path" >> "$RUNTIME_EXCLUDE_FILE"
+  if [[ "$path_type" == "dir" ]]; then
+    printf '%s/*\n' "$archive_path" >> "$RUNTIME_EXCLUDE_FILE"
+  fi
+}
+
+match_user_rule() {
+  # 用户规则支持两类写法：
+  # 1. 绝对路径，如 /root/data/dify
+  # 2. 通配规则，如 */.halo
+  # 解析后统一转换成 tar 能识别的实际排除项。
+  local rule="$1"
+  local matched=0
+  local root abs_root root_base entry archive_path path_type
+  local rule_tail find_name has_glob
+
+  if [[ "$rule" == /* ]]; then
+    if [[ ! -e "$rule" ]]; then
+      log "WARN" "用户排除规则未命中任何现有路径：$rule"
+      return 0
+    fi
+
+    if ! archive_path="$(archive_path_for_abs "$(readlink -f "$rule")")"; then
+      log "WARN" "用户排除规则不在任何备份根目录内：$rule"
+      return 0
+    fi
+
+    if [[ -d "$rule" ]]; then
+      path_type="dir"
+    else
+      path_type="file"
+    fi
+    append_exclude_path "$archive_path" "$path_type"
+    return 0
+  fi
+
+  has_glob=false
+  if [[ "$rule" == *'*'* || "$rule" == *'?'* || "$rule" == *'['* ]]; then
+    has_glob=true
+  fi
+
+  for root in "${BACKUP_PATHS[@]}"; do
+    abs_root="$(readlink -f "$root")"
+    root_base="$(basename "$abs_root")"
+
+    if ! $has_glob; then
+      entry=""
+      if [[ "$rule" == "$root_base" ]]; then
+        entry="$abs_root"
+      elif [[ "$rule" == "$root_base"/* ]]; then
+        entry="${abs_root}/${rule#"$root_base"/}"
+      fi
+
+      if [[ -n "$entry" && -e "$entry" ]]; then
+        matched=1
+        if [[ -d "$entry" ]]; then
+          path_type="dir"
+        else
+          path_type="file"
+        fi
+        append_exclude_path "$rule" "$path_type"
+      fi
+      continue
+    fi
+
+    rule_tail="${rule##*/}"
+    if [[ "$rule_tail" == *'*'* || "$rule_tail" == *'?'* || "$rule_tail" == *'['* ]]; then
+      while IFS= read -r -d '' entry; do
+        archive_path="$(archive_path_for_abs "$entry" || true)"
+        [[ -n "$archive_path" ]] || continue
+        if [[ "$archive_path" == $rule ]]; then
+          matched=1
+          if [[ -d "$entry" ]]; then
+            path_type="dir"
+          else
+            path_type="file"
+          fi
+          append_exclude_path "$archive_path" "$path_type"
+        fi
+      done < <(find "$abs_root" -mindepth 1 -print0 2>/dev/null)
+    else
+      find_name="$rule_tail"
+      while IFS= read -r -d '' entry; do
+        archive_path="$(archive_path_for_abs "$entry" || true)"
+        [[ -n "$archive_path" ]] || continue
+        if [[ "$archive_path" == $rule ]]; then
+          matched=1
+          if [[ -d "$entry" ]]; then
+            path_type="dir"
+          else
+            path_type="file"
+          fi
+          append_exclude_path "$archive_path" "$path_type"
+        fi
+      done < <(find "$abs_root" -mindepth 1 -name "$find_name" -print0 2>/dev/null)
+    fi
+  done
+
+  if (( matched == 0 )); then
+    log "WARN" "用户排除规则未命中任何路径：$rule"
+  fi
+}
+
+build_runtime_exclude_file() {
+  # 默认规则直接交给 tar。
+  # 用户规则先解析成真实命中路径，再换算为归档内排除项。
+  local rule
+  RUNTIME_EXCLUDE_FILE="$(mktemp)"
+  cat "$DEFAULT_EXCLUDE_FILE" > "$RUNTIME_EXCLUDE_FILE"
+
+  [[ -f "$USER_EXCLUDE_FILE" ]] || return 0
+
+  while IFS= read -r rule; do
+    [[ -n "$rule" ]] || continue
+    [[ "$rule" =~ ^[[:space:]]*# ]] && continue
+    match_user_rule "$rule"
+  done < "$USER_EXCLUDE_FILE"
+
+  awk '!seen[$0]++' "$RUNTIME_EXCLUDE_FILE" > "${RUNTIME_EXCLUDE_FILE}.dedup"
+  mv "${RUNTIME_EXCLUDE_FILE}.dedup" "$RUNTIME_EXCLUDE_FILE"
+}
+
 check_space() {
   local total=0
   local p sz avail need
@@ -247,15 +404,14 @@ pack() {
   fi
 
   log "INFO" "开始打包（支持默认与用户排除规则），pigz=${USE_PIGZ}"
+  build_runtime_exclude_file
   if $USE_PIGZ; then
     tar --warning=no-file-changed \
-      --exclude-from="$DEFAULT_EXCLUDE_FILE" \
-      --exclude-from="$USER_EXCLUDE_FILE" \
+      --exclude-from="$RUNTIME_EXCLUDE_FILE" \
       -c "${tar_args[@]}" | pigz > "$ARCHIVE_PATH"
   else
     tar --warning=no-file-changed \
-      --exclude-from="$DEFAULT_EXCLUDE_FILE" \
-      --exclude-from="$USER_EXCLUDE_FILE" \
+      --exclude-from="$RUNTIME_EXCLUDE_FILE" \
       -czf "$ARCHIVE_PATH" "${tar_args[@]}"
   fi
   end=$(date +%s)
