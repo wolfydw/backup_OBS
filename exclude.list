@@ -1,0 +1,24 @@
+# 常见不需要纳入备份的临时/缓存/日志等
+*.log
+*.log.*
+*.tmp
+*.swp
+*.swo
+.cache/
+.npm/_cacache/
+node_modules/
+tmp/
+temp/
+__pycache__/
+.DS_Store
+Thumbs.db
+*.pid
+*.sock
+*.lock
+.idea/
+.vscode/
+*.o
+*.class
+target/
+build/
+dist/
