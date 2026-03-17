@@ -79,7 +79,7 @@ tg_read_user_excludes() {
 }
 
 tg_backup_success() {
-  local label="$1" current_date="$2" backup_dirs="$3" user_excludes="$4" backup_size="$5" archive_name="$6" location="$7" pack_time="$8" upload_time="$9" speed="${10}"
+  local label="$1" backup_dirs="$2" user_excludes="$3" backup_size="$4" archive_name="$5" location="$6" pack_time="$7" upload_time="$8" speed="$9"
   local archive_info message
   archive_info=$(
     cat <<EOF
@@ -93,7 +93,6 @@ EOF
   )
   message="*备份成功*"$'\n\n'
   message+="*主机*"$'\n'"$(tg_code_block "$label")"$'\n'
-  message+="*时间*"$'\n'"$(tg_code_block "$current_date")"$'\n'
   message+="*备份内容*"$'\n'"$(tg_code_block "$backup_dirs")"$'\n'
   message+="*用户排除*"$'\n'"$(tg_code_block "$user_excludes")"$'\n'
   message+="*归档信息*"$'\n'"$(tg_code_block "$archive_info")"
@@ -101,7 +100,7 @@ EOF
 }
 
 tg_backup_dryrun() {
-  local label="$1" current_date="$2" backup_dirs="$3" user_excludes="$4" archive_name="$5" backup_size="$6" pack_time="$7"
+  local label="$1" backup_dirs="$2" user_excludes="$3" archive_name="$4" backup_size="$5" pack_time="$6"
   local archive_info message
   archive_info=$(
     cat <<EOF
@@ -112,7 +111,6 @@ EOF
   )
   message="*备份自检*"$'\n\n'
   message+="*主机*"$'\n'"$(tg_code_block "$label")"$'\n'
-  message+="*时间*"$'\n'"$(tg_code_block "$current_date")"$'\n'
   message+="*备份内容*"$'\n'"$(tg_code_block "$backup_dirs")"$'\n'
   message+="*用户排除*"$'\n'"$(tg_code_block "$user_excludes")"$'\n'
   message+="*归档信息*"$'\n'"$(tg_code_block "$archive_info")"
@@ -120,11 +118,10 @@ EOF
 }
 
 tg_backup_error() {
-  local label="$1" current_date="$2" reason="$3" error_log="$4"
+  local label="$1" reason="$2" error_log="$3"
   local message
   message="*备份失败*"$'\n\n'
   message+="*主机*"$'\n'"$(tg_code_block "$label")"$'\n'
-  message+="*时间*"$'\n'"$(tg_code_block "$current_date")"$'\n'
   message+="*原因*"$'\n'"$(tg_code_block "$reason")"
   if [[ -n "$error_log" ]]; then
     message+=$'\n'"*错误日志*"$'\n'"$(tg_code_block "$error_log")"
@@ -133,7 +130,7 @@ tg_backup_error() {
 }
 
 tg_clean_success() {
-  local label="$1" current_date="$2" prefix="$3" retain_days="$4" keep_count="$5" del_ok="$6" del_fail="$7"
+  local label="$1" prefix="$2" retain_days="$3" keep_count="$4" del_ok="$5" del_fail="$6"
   local summary message
   summary=$(
     cat <<EOF
@@ -146,17 +143,15 @@ EOF
   )
   message="*清理完成*"$'\n\n'
   message+="*主机*"$'\n'"$(tg_code_block "$label")"$'\n'
-  message+="*时间*"$'\n'"$(tg_code_block "$current_date")"$'\n'
   message+="*结果*"$'\n'"$(tg_code_block "$summary")"
   tg_send_message "$message"
 }
 
 tg_clean_error() {
-  local label="$1" current_date="$2" reason="$3" error_log="$4"
+  local label="$1" reason="$2" error_log="$3"
   local message
   message="*清理失败*"$'\n\n'
   message+="*主机*"$'\n'"$(tg_code_block "$label")"$'\n'
-  message+="*时间*"$'\n'"$(tg_code_block "$current_date")"$'\n'
   message+="*原因*"$'\n'"$(tg_code_block "$reason")"
   if [[ -n "$error_log" ]]; then
     message+=$'\n'"*错误日志*"$'\n'"$(tg_code_block "$error_log")"

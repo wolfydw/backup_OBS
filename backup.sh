@@ -39,7 +39,7 @@ on_error() {
   local tail_log
   log "ERROR" "脚本异常退出（exit=$exit_code, line=${line_no})."
   tail_log="$(tail -n 80 "${LOG_FILE:-./backup.log}" 2>/dev/null || true)"
-  tg_backup_error "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "脚本异常退出（exit=${exit_code}, line=${line_no}）" "$tail_log"
+  tg_backup_error "$LABEL" "脚本异常退出（exit=${exit_code}, line=${line_no}）" "$tail_log"
   exit "$exit_code"
 }
 trap on_error ERR
@@ -525,7 +525,7 @@ gen_sha
 if $DRY_RUN; then
   log "INFO" "Dry-run 模式：不执行上传。归档：${ARCHIVE_BASE} 大小：${BACKUP_SIZE_HUMAN}"
   log "INFO" "本次总用时：${SECONDS}s"
-  tg_backup_dryrun "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "$(printf '%s\n' "${BACKUP_PATHS[@]}")" "$(tg_read_user_excludes "$USER_EXCLUDE_FILE")" "$ARCHIVE_BASE" "$BACKUP_SIZE_HUMAN" "${PACK_SECONDS}s"
+  tg_backup_dryrun "$LABEL" "$(printf '%s\n' "${BACKUP_PATHS[@]}")" "$(tg_read_user_excludes "$USER_EXCLUDE_FILE")" "$ARCHIVE_BASE" "$BACKUP_SIZE_HUMAN" "${PACK_SECONDS}s"
   if $SELF_CHECK; then
     rm -f "$ARCHIVE_PATH" "$SHA_PATH" || true
     log "INFO" "Self-check 模式：已删除本地自检归档与校验文件"
@@ -538,7 +538,7 @@ retry 3 "上传到 OBS" upload || { log "ERROR" "上传失败"; exit 4; }
 if ! verify_remote; then
   local_tail_log="$(tail -n 80 "${LOG_FILE:-./backup.log}" 2>/dev/null || true)"
   log "ERROR" "上传后完整性校验失败"
-  tg_backup_error "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "上传后完整性校验失败：${ARCHIVE_BASE}" "$local_tail_log"
+  tg_backup_error "$LABEL" "上传后完整性校验失败：${ARCHIVE_BASE}" "$local_tail_log"
   exit 5
 fi
 
@@ -550,6 +550,6 @@ fi
 TOTAL_SECS=$SECONDS
 SPEED_HUMAN="$(numfmt --to=iec "$AVG_SPEED")/s"
 log "INFO" "完成：归档大小=${BACKUP_SIZE_HUMAN} 打包=${PACK_SECONDS}s 上传=${UP_SECONDS}s 平均速率=${SPEED_HUMAN} 总用时=${TOTAL_SECS}s"
-tg_backup_success "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "$(printf '%s\n' "${BACKUP_PATHS[@]}")" "$(tg_read_user_excludes "$USER_EXCLUDE_FILE")" "$BACKUP_SIZE_HUMAN" "$ARCHIVE_BASE" "obs://${OBS_BUCKET}/${OBS_BACKUP_DIR}/${ARCHIVE_BASE}" "${PACK_SECONDS}s" "${UP_SECONDS}s" "$SPEED_HUMAN"
+tg_backup_success "$LABEL" "$(printf '%s\n' "${BACKUP_PATHS[@]}")" "$(tg_read_user_excludes "$USER_EXCLUDE_FILE")" "$BACKUP_SIZE_HUMAN" "$ARCHIVE_BASE" "obs://${OBS_BUCKET}/${OBS_BACKUP_DIR}/${ARCHIVE_BASE}" "${PACK_SECONDS}s" "${UP_SECONDS}s" "$SPEED_HUMAN"
 
 exit 0

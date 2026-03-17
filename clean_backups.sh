@@ -29,7 +29,7 @@ on_error() {
   local tail_log
   log "ERROR" "清理异常退出（exit=${exit_code})"
   tail_log="$(tail -n 80 "${LOG_FILE:-./backup.log}" 2>/dev/null || true)"
-  tg_clean_error "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "脚本异常退出（exit=${exit_code}）" "$tail_log"
+  tg_clean_error "$LABEL" "脚本异常退出（exit=${exit_code}）" "$tail_log"
   exit "$exit_code"
 }
 trap on_error ERR
@@ -89,7 +89,7 @@ LIST_OUT="$(mktemp)"
 if ! obsutil ls "obs://${OBS_BUCKET}/${TARGET_PREFIX}" >"$LIST_OUT" 2>/dev/null; then
   log "ERROR" "无法列举 obs://${OBS_BUCKET}/${TARGET_PREFIX}"
   rm -f "$LIST_OUT"
-  tg_clean_error "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "无法列举 obs://${OBS_BUCKET}/${TARGET_PREFIX}" ""
+  tg_clean_error "$LABEL" "无法列举 obs://${OBS_BUCKET}/${TARGET_PREFIX}" ""
   exit 6
 fi
 
@@ -136,7 +136,7 @@ else
   done
 fi
 
-tg_clean_success "$LABEL" "$(date +'%Y-%m-%d %H:%M:%S')" "obs://${OBS_BUCKET}/${TARGET_PREFIX}" "${RETAIN_DAYS}" "${#TO_KEEP[@]}" "${DEL_OK}" "${DEL_FAIL}"
+tg_clean_success "$LABEL" "obs://${OBS_BUCKET}/${TARGET_PREFIX}" "${RETAIN_DAYS}" "${#TO_KEEP[@]}" "${DEL_OK}" "${DEL_FAIL}"
 if (( DEL_FAIL > 0 )); then
   exit 6
 fi
