@@ -11,9 +11,40 @@ tg_code_block() {
   printf '```text\n%s\n```' "$text"
 }
 
+TG_LAST_RESPONSE=""
+
+tg_post_with_retry() {
+  local api_url="$1"
+  local api_label="$2"
+  local message="$3"
+  local response="" attempt
+
+  for attempt in 1 2 3; do
+    response="$(curl -sS -X POST "$api_url" \
+      --connect-timeout 5 \
+      --max-time 10 \
+      --data-urlencode "chat_id=${TG_USER_ID}" \
+      --data-urlencode "parse_mode=MarkdownV2" \
+      --data-urlencode "disable_web_page_preview=true" \
+      --data-urlencode "text=${message}" 2>&1 || true)"
+
+    if echo "$response" | grep -q '"ok":true'; then
+      TG_LAST_RESPONSE="$response"
+      return 0
+    fi
+
+    if (( attempt < 3 )); then
+      log "WARN" "Telegram ${api_label} 第 ${attempt} 次发送失败，将重试: $response"
+    fi
+  done
+
+  TG_LAST_RESPONSE="$response"
+  return 1
+}
+
 tg_send_message() {
   local message="${1-}"
-  local response primary_api fallback_api
+  local primary_api fallback_api
 
   if [[ -z "${TG_BOT_TOKEN:-}" || -z "${TG_USER_ID:-}" ]]; then
     log "INFO" "未配置Telegram通知，跳过发送"
@@ -21,18 +52,12 @@ tg_send_message() {
   fi
 
   primary_api="https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage"
-  response="$(curl -sS -X POST "$primary_api" \
-    --data-urlencode "chat_id=${TG_USER_ID}" \
-    --data-urlencode "parse_mode=MarkdownV2" \
-    --data-urlencode "disable_web_page_preview=true" \
-    --data-urlencode "text=${message}" 2>&1 || true)"
-
-  if echo "$response" | grep -q '"ok":true'; then
+  if tg_post_with_retry "$primary_api" "official" "$message"; then
     log "INFO" "Telegram通知发送成功（official）"
     return 0
   fi
 
-  log "WARN" "Telegram官方API发送失败: $response"
+  log "WARN" "Telegram官方API发送失败: $TG_LAST_RESPONSE"
 
   if [[ -z "${TG_API_BASE_FALLBACK:-}" ]]; then
     log "WARN" "未配置Telegram备用API，通知发送失败"
@@ -40,18 +65,12 @@ tg_send_message() {
   fi
 
   fallback_api="${TG_API_BASE_FALLBACK%/}/bot${TG_BOT_TOKEN}/sendMessage"
-  response="$(curl -sS -X POST "$fallback_api" \
-    --data-urlencode "chat_id=${TG_USER_ID}" \
-    --data-urlencode "parse_mode=MarkdownV2" \
-    --data-urlencode "disable_web_page_preview=true" \
-    --data-urlencode "text=${message}" 2>&1 || true)"
-
-  if echo "$response" | grep -q '"ok":true'; then
+  if tg_post_with_retry "$fallback_api" "fallback" "$message"; then
     log "INFO" "Telegram通知发送成功（fallback）"
     return 0
   fi
 
-  log "WARN" "Telegram备用API发送失败: $response"
+  log "WARN" "Telegram备用API发送失败: $TG_LAST_RESPONSE"
   log "WARN" "Telegram通知发送失败"
   return 1
 }
