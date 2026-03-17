@@ -23,6 +23,7 @@ cp exclude.user.list.example exclude.user.list
 - `BACKUP_DIRS`：要备份的目录，使用多行格式，每行一个目录
 - `TG_BOT_TOKEN` / `TG_USER_ID`：Telegram 通知配置，可留空
 - `TG_API_BASE_FALLBACK`：可选，自建 Telegram API 地址；官方失败时自动回退
+- `GIT_REMOTE_FALLBACK`：可选，`origin` 不可访问时使用的公开 Git 镜像地址
 
 `BACKUP_DIRS` 示例：
 
@@ -138,6 +139,7 @@ crontab -l
 它会执行：
 
 - `git fetch --tags origin`
+- 如果 `origin` 不可用且配置了 `GIT_REMOTE_FALLBACK`，自动回退到备用仓库
 - 默认更新 `stable` 分支，或切换到你指定的 tag / 分支
 - 修正脚本执行权限
 
@@ -156,6 +158,14 @@ crontab -l
 
 - `systemd timer`：负责定时执行 `./update.sh stable`
 - `cron`：负责每天 `03:00` 执行一次 `./backup.sh`
+
+如果你有国内镜像仓库，可以在 `env.conf` 中配置：
+
+```bash
+GIT_REMOTE_FALLBACK="https://gitea.ydw.cool/wolfydw/backup_OBS.git"
+```
+
+这样 `update.sh` 会优先从 GitHub 的 `origin` 更新，失败后自动回退到这个公开 Gitea 仓库。
 
 ## GitHub 多机发布流程
 
