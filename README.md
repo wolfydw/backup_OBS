@@ -22,6 +22,7 @@ cp exclude.user.list.example exclude.user.list
 - `LABEL`：机器或业务标识
 - `BACKUP_DIRS`：要备份的目录，使用多行格式，每行一个目录
 - `TG_BOT_TOKEN` / `TG_USER_ID`：Telegram 通知配置，可留空
+- `TG_API_BASE_FALLBACK`：可选，自建 Telegram API 地址；官方失败时自动回退
 
 `BACKUP_DIRS` 示例：
 
@@ -104,6 +105,7 @@ cd /root/backup_OBS
 - 安装脚本不会覆盖已有的 `env.conf` 和 `exclude.user.list`
 - `install.sh` 和后续脚本都只使用仓库根目录下的 `./obsutil`
 - `obsutil` 安装完成后，首次仍需手动执行 `./obsutil config -interactive`
+- Telegram 通知默认优先走官方 `https://api.telegram.org`，失败后才会尝试 `TG_API_BASE_FALLBACK`
 
 如果你想手动安装或更新仓库根目录下的 `./obsutil`，可以直接执行：
 

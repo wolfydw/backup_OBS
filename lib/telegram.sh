@@ -13,25 +13,47 @@ tg_code_block() {
 
 tg_send_message() {
   local message="${1-}"
-  local response api
+  local response primary_api fallback_api
 
   if [[ -z "${TG_BOT_TOKEN:-}" || -z "${TG_USER_ID:-}" ]]; then
     log "INFO" "未配置Telegram通知，跳过发送"
     return 0
   fi
 
-  api="https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage"
-  response="$(curl -sS -X POST "$api" \
+  primary_api="https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage"
+  response="$(curl -sS -X POST "$primary_api" \
     --data-urlencode "chat_id=${TG_USER_ID}" \
     --data-urlencode "parse_mode=MarkdownV2" \
     --data-urlencode "disable_web_page_preview=true" \
     --data-urlencode "text=${message}" 2>&1 || true)"
 
   if echo "$response" | grep -q '"ok":true'; then
-    log "INFO" "Telegram通知发送成功"
-  else
-    log "WARN" "Telegram通知发送失败: $response"
+    log "INFO" "Telegram通知发送成功（official）"
+    return 0
   fi
+
+  log "WARN" "Telegram官方API发送失败: $response"
+
+  if [[ -z "${TG_API_BASE_FALLBACK:-}" ]]; then
+    log "WARN" "未配置Telegram备用API，通知发送失败"
+    return 1
+  fi
+
+  fallback_api="${TG_API_BASE_FALLBACK%/}/bot${TG_BOT_TOKEN}/sendMessage"
+  response="$(curl -sS -X POST "$fallback_api" \
+    --data-urlencode "chat_id=${TG_USER_ID}" \
+    --data-urlencode "parse_mode=MarkdownV2" \
+    --data-urlencode "disable_web_page_preview=true" \
+    --data-urlencode "text=${message}" 2>&1 || true)"
+
+  if echo "$response" | grep -q '"ok":true'; then
+    log "INFO" "Telegram通知发送成功（fallback）"
+    return 0
+  fi
+
+  log "WARN" "Telegram备用API发送失败: $response"
+  log "WARN" "Telegram通知发送失败"
+  return 1
 }
 
 tg_read_user_excludes() {
