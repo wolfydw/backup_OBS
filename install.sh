@@ -18,7 +18,6 @@ usage() {
   - system 模式会安装到 /etc/systemd/system
   - user 模式会安装到 ~/.config/systemd/user
   - 会为目标用户安装每天 03:00 执行一次的备份 cron
-  - 安装完成后会执行一次 ./backup.sh --self-check 自检
   - 不会覆盖已有 env.conf 和 exclude.user.list
   - dry-run 只打印将执行的动作，不实际写入 systemd 或 crontab
 USAGE
@@ -183,9 +182,3 @@ else
 fi
 
 install_backup_cron
-
-if $DRY_RUN; then
-  echo "[dry-run] 将执行 ./backup.sh --self-check"
-else
-  bash "${SCRIPT_DIR}/backup.sh" --self-check
-fi

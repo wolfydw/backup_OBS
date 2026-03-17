@@ -87,7 +87,6 @@ cd /root/backup_OBS
 - 安装 `systemd` 更新任务
 - 启用 `backup-obs-update.timer`
 - 为目标用户写入每天 `03:00` 执行一次的备份 `cron`
-- 执行一次 `./backup.sh --self-check` 安装自检
 
 默认使用 system 模式，也就是安装到 `/etc/systemd/system`。
 
@@ -110,6 +109,12 @@ cd /root/backup_OBS
 
 ```bash
 ./lib/obsutil.sh
+```
+
+如果你要手动做一次备份自检，只在调试时执行：
+
+```bash
+./backup.sh --self-check
 ```
 
 常用查看命令：
